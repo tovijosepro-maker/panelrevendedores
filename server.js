@@ -1,51 +1,53 @@
 const express = require('express');
 const fs = require('fs');
-const path = require('path');
+const path = express(); // o path normal
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join ? path.join(__dirname, 'public') : './public'));
 
-// Ruta del archivo database.json
+// Memoria RAM temporal por si el disco de Render se pone pesado
+let memoriaRevendedores = [];
 const dbFilePath = path.join(__dirname, 'database.json');
 
-// Función auxiliar para leer la base de datos local
 function leerDB() {
     try {
-        if (!fs.existsSync(dbFilePath)) {
-            fs.writeFileSync(dbFilePath, JSON.stringify([], null, 2));
+        if (fs.existsSync(dbFilePath)) {
+            const data = fs.readFileSync(dbFilePath, 'utf8');
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                memoriaRevendedores = parsed;
+            }
         }
-        const data = fs.readFileSync(dbFilePath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error al leer database.json:', error);
-        return [];
+    } catch (e) {
+        console.log("Usando memoria RAM de respaldo");
     }
+    return memoriaRevendedores;
 }
 
-// Función auxiliar para escribir en la base de datos local
 function escribirDB(data) {
+    memoriaRevendedores = data;
     try {
         fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2));
     } catch (error) {
-        console.error('Error al escribir database.json:', error);
+        console.log("Modo memoria RAM activado (Render bloqueó escritura en disco)");
     }
 }
 
-// Obtener todos los revendedores
+// Cargar al iniciar
+leerDB();
+
 app.get('/api/revendedores', (req, res) => {
     try {
         const revendedores = leerDB();
-        res.json(revendedores || []);
+        res.json(Array.isArray(revendedores) ? revendedores : []);
     } catch (error) {
-        console.error('Error en /api/revendedores:', error);
         res.json([]);
     }
 });
 
-// Guardar o actualizar una cuenta de revendedor
 app.post('/api/revendedor/cuenta', (req, res) => {
     try {
         const { nombre, whatsapp, servicio, cuenta, diasVigencia, fechaVencimiento, diasRestantes, estadoSemaforo } = req.body;
@@ -87,5 +89,5 @@ app.post('/api/revendedor/cuenta', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor ejecutándose en el puerto ${PORT} usando database.json local`);
+    console.log(`Servidor ejecutándose en el puerto ${PORT}`);
 });
