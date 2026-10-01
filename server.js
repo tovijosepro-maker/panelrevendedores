@@ -1,5 +1,4 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -8,52 +7,41 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-let memoriaRevendedores = [];
-const dbFilePath = path.join(__dirname, 'database.json');
-
-function leerDB() {
-    try {
-        if (fs.existsSync(dbFilePath)) {
-            const data = fs.readFileSync(dbFilePath, 'utf8');
-            const parsed = JSON.parse(data);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                memoriaRevendedores = parsed;
+// Memoria RAM interna del servidor (cero problemas de disco en Render)
+let memoriaRevendedores = [
+    {
+        id: "ejemplo",
+        nombre: "Ejemplo Revendedor",
+        whatsapp: "3000000000",
+        cuentas: [
+            {
+                id: "1",
+                servicio: "Netflix",
+                cuenta: "correo@test.com - Pin: 1234",
+                fechaVencimiento: "2026-12-31",
+                diasRestantes: 30,
+                estadoSemaforo: "verde"
             }
-        }
-    } catch (e) {
-        console.log("Usando memoria RAM de respaldo");
+        ]
     }
-    return memoriaRevendedores;
-}
+];
 
-function escribirDB(data) {
-    memoriaRevendedores = data;
-    try {
-        fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.log("Modo memoria RAM activo");
-    }
-}
-
-leerDB();
-
+// Obtener todos los revendedores
 app.get('/api/revendedores', (req, res) => {
     try {
-        const revendedores = leerDB();
-        res.json(Array.isArray(revendedores) ? revendedores : []);
+        res.json(memoriaRevendedores);
     } catch (error) {
         res.json([]);
     }
 });
 
+// Guardar cuenta
 app.post('/api/revendedor/cuenta', (req, res) => {
     try {
         const { nombre, whatsapp, servicio, cuenta, diasVigencia, fechaVencimiento, diasRestantes, estadoSemaforo } = req.body;
         
-        const revendedorId = nombre ? nombre.trim().toLowerCase() : 'general';
-        let revendedores = leerDB();
-        
-        let revendedor = revendedores.find(r => r.id === revendedorId || (r.nombre && r.nombre.toLowerCase() === (nombre || '').toLowerCase()));
+        const revendedorNombre = nombre ? nombre.trim() : 'General';
+        let revendedor = memoriaRevendedores.find(r => r.nombre.toLowerCase() === revendedorNombre.toLowerCase());
 
         const nuevaCuenta = {
             id: Date.now().toString(),
@@ -66,19 +54,18 @@ app.post('/api/revendedor/cuenta', (req, res) => {
 
         if (!revendedor) {
             revendedor = {
-                id: revendedorId,
-                nombre: nombre || 'Sin nombre',
+                id: Date.now().toString(),
+                nombre: revendedorNombre,
                 whatsapp: whatsapp || '',
                 cuentas: [nuevaCuenta]
             };
-            revendedores.push(revendedor);
+            memoriaRevendedores.push(revendedor);
         } else {
             if (whatsapp) revendedor.whatsapp = whatsapp;
             if (!revendedor.cuentas) revendedor.cuentas = [];
             revendedor.cuentas.push(nuevaCuenta);
         }
         
-        escribirDB(revendedores);
         res.json({ success: true, message: 'Cuenta guardada correctamente' });
     } catch (error) {
         console.error("Error al guardar cuenta:", error);
