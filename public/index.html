@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Pro - Revendedores Lara</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 950px; margin: 0 auto; }
+        h1, h2, h4 { color: #38bdf8; }
+        .panel-form, .search-box, .config-box { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; }
+        .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 5px; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 15px; }
+        button { background: #0284c7; color: white; border: none; padding: 10px 14px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0369a1; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-warning { background: #eab308; color: #000; }
+        .btn-warning:hover { background: #ca8a04; }
+        .btn-success { background: #22c55e; }
+        .btn-success:hover { background: #16a34a; }
+        
+        /* Controles y Filtros Superior */
+        .controls-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .controls-row input { flex: 1; min-width: 220px; }
+        .filter-buttons { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .filter-btn { background: #334155; padding: 8px 12px; font-size: 13px; border-radius: 5px; cursor: pointer; border: 1px solid #475569; }
+        .filter-btn.active { background: #0284c7; border-color: #38bdf8; }
+
+        /* Tarjetas de revendedores */
+        .revendedor-card { background: #1e293b; margin-bottom: 10px; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
+        .revendedor-header { padding: 15px; background: #334155; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; }
+        .revendedor-body { padding: 15px; display: none; background: #1e293b; }
+        .cuenta-row { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 12px; margin-bottom: 8px; border-radius: 5px; border-left: 6px solid #475569; font-size: 14px; flex-wrap: wrap; gap: 10px; }
+        
+        .semaforo-verde { border-left-color: #22c55e; }
+        .semaforo-amarillo { border-left-color: #eab308; background: #2a2510; }
+        .semaforo-rojo { border-left-color: #ef4444; background: #2a1515; }
+        
+        .badge { background: #0284c7; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .info-tiempo { font-size: 13px; margin-top: 4px; display: block; }
+        
+        #appContainer, #loginContainer { display: none; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        /* Caja de edición en línea */
+        .edit-box { display: none; width: 100%; background: #111827; padding: 10px; border-radius: 5px; margin-top: 8px; border: 1px solid #374151; }
+        .edit-box input { margin-bottom: 8px; width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- LOGIN -->
+        <div id="loginContainer" class="panel-form" style="max-width: 400px; margin: 80px auto; text-align: center;">
+            <h2>🔐 Acceso al Panel</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Introduce tus credenciales de administrador</p>
+            <div class="form-group" style="text-align: left;">
+                <label>Usuario:</label>
+                <input type="text" id="loginUser" placeholder="admin">
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Contraseña:</label>
+                <input type="password" id="loginPass" placeholder="••••••••">
+            </div>
+            <button onclick="realizarLogin()" style="width: 100%; margin-top: 10px;">Ingresar al Sistema</button>
+        </div>
+
+        <!-- APP PRINCIPAL -->
+        <div id="appContainer">
+            <div class="top-bar">
+                <h1>Panel Pro - Revendedores (Lara)</h1>
+                <button onclick="cerrarSesion()" class="btn-danger" style="padding: 8px 15px;">Cerrar Sesión</button>
+            </div>
+            
+            <!-- FORMULARIO NUEVA CUENTA -->
+            <div class="panel-form">
+                <h2>➕ Agregar Cuenta a Revendedor</h2>
+                <div class="form-group">
+                    <label>Nombre del Revendedor:</label>
+                    <input type="text" id="nombreRev" placeholder="Ej: Carlos Pérez">
+                </div>
+                <div class="form-group">
+                    <label>WhatsApp:</label>
+                    <input type="text" id="wppRev" placeholder="Ej: 3001234567">
+                </div>
+                <div class="form-group">
+                    <label>Plataforma / Servicio:</label>
+                    <input type="text" id="servicioRev" placeholder="Ej: Netflix, Prime Video, Max...">
+                </div>
+                <div class="form-group">
+                    <label>Cuenta / Correo y Datos:</label>
+                    <input type="text" id="cuentaRev" placeholder="Ej: correo@gmail.com - Pin: 1234">
+                </div>
+                <div class="form-group">
+                    <label>Días de vigencia (Blanco = 30 días automáticos):</label>
+                    <input type="number" id="diasRev" placeholder="Automático: 30 días">
+                </div>
+                <button onclick="guardarCuenta()">Guardar Cuenta en el Sistema</button>
+            </div>
+
+            <!-- BUSCADOR Y FILTROS RÁPIDOS -->
+            <div class="search-box">
+                <div class="controls-row">
+                    <input type="text" id="inputBuscador" placeholder="🔍 Buscar por nombre, servicio o correo..." oninput="filtrarDatos()">
+                </div>
+                <div class="filter-buttons">
+                    <span style="font-size: 13px; color: #94a3b8; font-weight: bold;">Filtro Estado:</span>
+                    <button class="filter-btn active" onclick="cambiarFiltro('todos', this)">Todos</button>
+                    <button class="filter-btn" onclick="cambiarFiltro('verde', this)">🟢 Activas</button>
+                    <button class="filter-btn" onclick="cambiarFiltro('amarillo', this)">🟡 Críticas (≤2 días)</button>
+                    <button class="filter-btn" onclick="cambiarFiltro('rojo', this)">🔴 Vencidas</button>
+                </div>
+            </div>
+
+            <!-- CONFIGURACIÓN / CAMBIAR CLAVE -->
+            <div class="config-box">
+                <h4 style="margin-top: 0; color: #38bdf8; cursor: pointer;" onclick="toggleConfig()">⚙️ Opciones de Seguridad (Cambiar Contraseña) ▼</h4>
+                <div id="configBody" style="display: none; margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Contraseña Actual:</label>
+                        <input type="password" id="passActual">
+                    </div>
+                    <div class="form-group">
+                        <label>Nueva Contraseña:</label>
+                        <input type="password" id="passNueva">
+                    </div>
+                    <button onclick="cambiarPassword()" style="background: #0d9488;">Actualizar Contraseña</button>
+                </div>
+            </div>
+
+            <h2>Lista de Revendedores (Total: <span id="totalRev">0</span>)</h2>
+            <div id="listaRevendedores"></div>
+        </div>
+
+    </div>
+
+    <script>
+        let revendedoresGlobal = [];
+        let filtroActualEstado = 'todos';
+        let acordeonesAbiertos = {};
+
+        window.onload = function() {
+            if (localStorage.getItem('lara_sesion_pro') === 'true') {
+                document.getElementById('appContainer').style.display = 'block';
+                cargarDatos();
+            } else {
+                document.getElementById('loginContainer').style.display = 'block';
+            }
+        };
+
+        async function realizarLogin() {
+            const usuario = document.getElementById('loginUser').value.trim();
+            const clave = document.getElementById('loginPass').value.trim();
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario, clave })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('lara_sesion_pro', 'true');
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                cargarDatos();
+            } else {
+                alert('Usuario o contraseña incorrectos.');
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('lara_sesion_pro');
+            location.reload();
+        }
+
+        function toggleConfig() {
+            const body = document.getElementById('configBody');
+            body.style.display = body.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function cambiarPassword() {
+            const claveActual = document.getElementById('passActual').value;
+            const nuevaClave = document.getElementById('passNueva').value;
+            if (!claveActual || !nuevaClave) return alert('Completa los campos.');
+            const res = await fetch('/api/cambiar-clave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ claveActual, nuevaClave })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('¡Contraseña actualizada!');
+                document.getElementById('passActual').value = '';
+                document.getElementById('passNueva').value = '';
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function cargarDatos() {
+            const res = await fetch('/api/revendedores');
+            revendedoresGlobal = await res.json();
+            filtrarDatos();
+        }
+
+        function cambiarFiltro(estado, btnElem) {
+            filtroActualEstado = estado;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btnElem.classList.add('active');
+            filtrarDatos();
+        }
+
+        function filtrarDatos() {
+            const textoBusqueda = document.getElementById('inputBuscador').value.toLowerCase();
+
+            let filtrados = revendedoresGlobal.map(rev => {
+                let cuentasFiltradas = rev.cuentas.filter(c => {
+                    const matchTexto = rev.nombre.toLowerCase().includes(textoBusqueda) || 
+                                       rev.whatsapp.toLowerCase().includes(textoBusqueda) || 
+                                       c.servicio.toLowerCase().includes(textoBusqueda) || 
+                                       c.cuenta.toLowerCase().includes(textoBusqueda);
+                    
+                    const matchEstado = (filtroActualEstado === 'todos') || (c.estadoSemaforo === filtroActualEstado);
+
+                    return matchTexto && matchEstado;
+                });
+
+                return { ...rev, cuentas: cuentasFiltradas };
+            }).filter(rev => {
+                if (textoBusqueda && (rev.nombre.toLowerCase().includes(textoBusqueda) || rev.whatsapp.toLowerCase().includes(textoBusqueda))) {
+                    return rev.cuentas.length > 0 || true; 
+                }
+                return rev.cuentas.length > 0;
+            });
+
+            renderizarLista(filtrados);
+        }
+
+        function renderizarLista(data) {
+            document.getElementById('totalRev').innerText = data.length;
+            const contenedor = document.getElementById('listaRevendedores');
+            contenedor.innerHTML = '';
+
+            if(data.length === 0) {
+                contenedor.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No se encontraron resultados.</p>';
+                return;
+            }
+
+            data.forEach((rev, index) => {
+                let cuentasHTML = '';
+                if(rev.cuentas && rev.cuentas.length > 0) {
+                    rev.cuentas.forEach(c => {
+                        let claseSemaforo = 'semaforo-verde';
+                        let textoAlerta = `📅 Vence: ${c.fechaVencimiento} (Faltan ${c.diasRestantes} días)`;
+
+                        if (c.estadoSemaforo === 'amarillo') {
+                            claseSemaforo = 'semaforo-amarillo';
+                            textoAlerta = `⚠️ <b>¡ALERTA DE CORTE!</b> Vence: ${c.fechaVencimiento} (¡Quedan ${c.diasRestantes} días!)`;
+                        } else if (c.estadoSemaforo === 'rojo') {
+                            claseSemaforo = 'semaforo-rojo';
+                            textoAlerta = `❌ <b>¡VENCIDA!</b> Caducó el ${c.fechaVencimiento}`;
+                        }
+
+                        cuentasHTML += `
+                            <div class="cuenta-row ${claseSemaforo}" id="fila-${c.id}">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <span class="badge">${c.servicio}</span> <b>${c.cuenta}</b><br>
+                                    <span class="info-tiempo">${textoAlerta}</span>
+                                </div>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    <button class="btn-success" onclick="renovarCuenta('${rev.id}', '${c.id}')">+30 Días</button>
+                                    <button class="btn-warning" onclick="abrirEdicion('${c.id}')">Editar</button>
+                                    <button class="btn-danger" id="btn-eliminar-${c.id}" onclick="prepararEliminacion('${rev.id}', '${c.id}')">Eliminar</button>
+                                </div>
+                                <!-- Caja de edición en línea -->
+                                <div class="edit-box" id="edit-box-${c.id}">
+                                    <input type="text" id="edit-serv-${c.id}" value="${c.servicio}">
+                                    <input type="text" id="edit-cta-${c.id}" value="${c.cuenta}">
+                                    <div style="display: flex; gap: 5px;">
+                                        <button onclick="guardarEdicion('${rev.id}', '${c.id}')" style="background: #0d9488; padding: 6px 12px; font-size: 13px;">Guardar</button>
+                                        <button onclick="abrirEdicion('${c.id}')" style="background: #475569; padding: 6px 12px; font-size: 13px;">Cancelar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    cuentasHTML = '<p style="color: #94a3b8; font-size: 13px;">No hay cuentas con este filtro.</p>';
+                }
+
+                const estaAbierto = acordeonesAbiertos[rev.id] || document.getElementById('inputBuscador').value;
+                const displayStyle = estaAbierto ? 'block' : 'none';
+
+                contenedor.innerHTML += `
+                    <div class="revendedor-card">
+                        <div class="revendedor-header" onclick="toggleAcordeon('${rev.id}', ${index})">
+                            <span>👤 ${rev.nombre} (${rev.whatsapp}) - Cuentas: ${rev.cuentas.length}</span>
+                            <span>▼ Desplegar</span>
+                        </div>
+                        <div class="revendedor-body" id="body-${index}" style="display: ${displayStyle};">
+                            ${cuentasHTML}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function guardarCuenta() {
+            const nombre = document.getElementById('nombreRev').value.trim();
+            const whatsapp = document.getElementById('wppRev').value.trim();
+            const servicio = document.getElementById('servicioRev').value.trim();
+            const cuenta = document.getElementById('cuentaRev').value.trim();
+            const diasPersonalizados = document.getElementById('diasRev').value.trim();
+
+            if (!nombre || !servicio || !cuenta) {
+                alert('Completa al menos el nombre, servicio y cuenta.');
+                return;
+            }
+
+            const res = await fetch('/api/revendedor/cuenta', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, whatsapp, servicio, cuenta, diasPersonalizados })
+            });
+
+            if (res.ok) {
+                document.getElementById('servicioRev').value = '';
+                document.getElementById('cuentaRev').value = '';
+                document.getElementById('diasRev').value = '';
+                
+                const resData = await fetch('/api/revendedores');
+                revendedoresGlobal = await resData.json();
+                
+                const revGuardado = revendedoresGlobal.find(r => r.nombre.toLowerCase() === nombre.toLowerCase());
+                if(revGuardado) {
+                    acordeonesAbiertos[revGuardado.id] = true;
+                }
+
+                filtrarDatos();
+            } else {
+                alert('Error al guardar.');
+            }
+        }
+
+        function abrirEdicion(cuentaId) {
+            const box = document.getElementById(`edit-box-${cuentaId}`);
+            box.style.display = box.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function guardarEdicion(revId, cuentaId) {
+            const servicio = document.getElementById(`edit-serv-${cuentaId}`).value.trim();
+            const cuenta = document.getElementById(`edit-cta-${cuentaId}`).value.trim();
+
+            const res = await fetch(`/api/revendedor/${revId}/cuenta/${cuentaId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servicio, cuenta })
+            });
+
+            if (res.ok) {
+                acordeonesAbiertos[revId] = true;
+                cargarDatos();
+            } else {
+                alert('Error al actualizar');
+            }
+        }
+
+        async function renovarCuenta(revId, cuentaId) {
+            const res = await fetch(`/api/revendedor/${revId}/cuenta/${cuentaId}/renovar`, { method: 'POST' });
+            if(res.ok) {
+                acordeonesAbiertos[revId] = true;
+                cargarDatos();
+            } else {
+                alert('Error al renovar');
+            }
+        }
+
+        function prepararEliminacion(revId, cuentaId) {
+            const btn = document.getElementById(`btn-eliminar-${cuentaId}`);
+            if (btn.dataset.confirmando === 'true') {
+                ejecutarEliminacion(revId, cuentaId);
+            } else {
+                btn.dataset.confirmando = 'true';
+                btn.innerText = '¿Seguro?';
+                btn.style.background = '#b91c1c';
+                
+                setTimeout(() => {
+                    if(btn) {
+                        btn.dataset.confirmando = 'false';
+                        btn.innerText = 'Eliminar';
+                        btn.style.background = '#ef4444';
+                    }
+                }, 3000);
+            }
+        }
+
+        async function ejecutarEliminacion(revId, cuentaId) {
+            const res = await fetch(`/api/revendedor/${revId}/cuenta/${cuentaId}`, { method: 'DELETE' });
+            if(res.ok) {
+                acordeonesAbiertos[revId] = true;
+                cargarDatos();
+            } else {
+                alert('Error al eliminar.');
+            }
+        }
+
+        function toggleAcordeon(revId, index) {
+            const body = document.getElementById(`body-${index}`);
+            const estaAbierto = body.style.display === 'block';
+            body.style.display = estaAbierto ? 'none' : 'block';
+            acordeonesAbiertos[revId] = !estaAbierto;
+        }
+    </script>
+</body>
+</html>
