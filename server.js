@@ -1,14 +1,13 @@
 const express = require('express');
 const fs = require('fs');
-const path = express(); // o path normal
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join ? path.join(__dirname, 'public') : './public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Memoria RAM temporal por si el disco de Render se pone pesado
 let memoriaRevendedores = [];
 const dbFilePath = path.join(__dirname, 'database.json');
 
@@ -32,11 +31,10 @@ function escribirDB(data) {
     try {
         fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2));
     } catch (error) {
-        console.log("Modo memoria RAM activado (Render bloqueó escritura en disco)");
+        console.log("Modo memoria RAM activo");
     }
 }
 
-// Cargar al iniciar
 leerDB();
 
 app.get('/api/revendedores', (req, res) => {
