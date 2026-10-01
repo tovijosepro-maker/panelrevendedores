@@ -5,11 +5,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para leer JSON y archivos estáticos
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Conexión limpia usando la variable de entorno de Render
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
@@ -40,7 +38,7 @@ const configSchema = new mongoose.Schema({
 const Revendedor = mongoose.model('Revendedor', revendedorSchema);
 const Config = mongoose.model('Config', configSchema);
 
-// Rutas de la API (Ejemplo básico para lectura y guardado)
+// RUTAS REALES DE LA API
 app.get('/api/revendedores', async (req, res) => {
     try {
         const revendedores = await Revendedor.find();
@@ -52,14 +50,22 @@ app.get('/api/revendedores', async (req, res) => {
 
 app.post('/api/revendedor/cuenta', async (req, res) => {
     try {
-        // Lógica para guardar cuenta
+        const { revendedorId, cuentaData } = req.body;
+        let revendedor = await Revendedor.findOne({ id: revendedorId });
+        
+        if (!revendedor) {
+            revendedor = new Revendedor({ id: revendedorId, nombre: revendedorId, whatsapp: '', cuentas: [cuentaData] });
+        } else {
+            revendedor.cuentas.push(cuentaData);
+        }
+        
+        await revendedor.save();
         res.json({ success: true, message: 'Cuenta guardada correctamente' });
     } catch (error) {
         res.status(500).json({ error: 'Error al guardar la cuenta' });
     }
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
     console.log(`Servidor ejecutándose en el puerto ${PORT}`);
 });
