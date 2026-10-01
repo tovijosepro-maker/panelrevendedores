@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -8,64 +8,53 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MONGO_URI = process.env.MONGO_URI || '';
+// Ruta del archivo database.json
+const dbFilePath = path.join(__dirname, 'database.json');
 
-if (MONGO_URI) {
-    mongoose.connect(MONGO_URI)
-      .then(() => console.log('¡Conectado exitosamente a la base de datos!'))
-      .catch(err => console.error('❌ Error al conectar a MongoDB:', err));
-} else {
-    console.warn('⚠️ MONGO_URI no está definida en las variables de entorno.');
+// Función auxiliar para leer la base de datos local
+function leerDB() {
+    try {
+        if (!fs.existsSync(dbFilePath)) {
+            fs.writeFileSync(dbFilePath, JSON.stringify([], null, 2));
+        }
+        const data = fs.readFileSync(dbFilePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error al leer database.json:', error);
+        return [];
+    }
 }
 
-const cuentaSchema = new mongoose.Schema({
-    id: String,
-    servicio: String,
-    cuenta: String,
-    fechaVencimiento: String,
-    diasRestantes: Number,
-    estadoSemaforo: String
-});
-
-const revendedorSchema = new mongoose.Schema({
-    id: String,
-    nombre: String,
-    whatsapp: String,
-    cuentas: [cuentaSchema]
-});
-
-const Revendedor = mongoose.model('Revendedor', revendedorSchema);
-
-// Ruta protegida: si la BD falla, devuelve un array vacío [] para que el frontend nunca colapse
-app.get('/api/revendedores', async (req, res) => {
+// Función auxiliar para escribir en la base de datos local
+function escribirDB(data) {
     try {
-        if (mongoose.connection.readyState !== 1) {
-            return res.json([]);
-        }
-        const revendedores = await Revendedor.find();
+        fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Error al escribir database.json:', error);
+    }
+}
+
+// Obtener todos los revendedores
+app.get('/api/revendedores', (req, res) => {
+    try {
+        const revendedores = leerDB();
         res.json(revendedores || []);
     } catch (error) {
         console.error('Error en /api/revendedores:', error);
-        res.json([]); 
+        res.json([]);
     }
 });
 
-app.post('/api/revendedor/cuenta', async (req, res) => {
+// Guardar o actualizar una cuenta de revendedor
+app.post('/api/revendedor/cuenta', (req, res) => {
     try {
-        if (mongoose.connection.readyState !== 1) {
-            return res.status(500).json({ error: 'Base de datos desconectada temporalmente' });
-        }
-        
         const { nombre, whatsapp, servicio, cuenta, diasVigencia, fechaVencimiento, diasRestantes, estadoSemaforo } = req.body;
         
         const revendedorId = nombre ? nombre.trim().toLowerCase() : 'general';
-        let revendedor = await Revendedor.findOne({ 
-            $or: [
-                { id: revendedorId }, 
-                { nombre: { $regex: new RegExp(`^${nombre}$`, 'i') } }
-            ] 
-        });
+        let revendedores = leerDB();
         
+        let revendedor = revendedores.find(r => r.id === revendedorId || (r.nombre && r.nombre.toLowerCase() === (nombre || '').toLowerCase()));
+
         const nuevaCuenta = {
             id: Date.now().toString(),
             servicio: servicio || '',
@@ -76,18 +65,20 @@ app.post('/api/revendedor/cuenta', async (req, res) => {
         };
 
         if (!revendedor) {
-            revendedor = new Revendedor({
+            revendedor = {
                 id: revendedorId,
                 nombre: nombre || 'Sin nombre',
                 whatsapp: whatsapp || '',
                 cuentas: [nuevaCuenta]
-            });
+            };
+            revendedores.push(revendedor);
         } else {
             if (whatsapp) revendedor.whatsapp = whatsapp;
+            if (!revendedor.cuentas) revendedor.cuentas = [];
             revendedor.cuentas.push(nuevaCuenta);
         }
         
-        await revendedor.save();
+        escribirDB(revendedores);
         res.json({ success: true, message: 'Cuenta guardada correctamente' });
     } catch (error) {
         console.error("Error al guardar cuenta:", error);
@@ -96,5 +87,5 @@ app.post('/api/revendedor/cuenta', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor ejecutándose en el puerto ${PORT}`);
+    console.log(`Servidor ejecutándose en el puerto ${PORT} usando database.json local`);
 });
